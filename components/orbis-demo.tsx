@@ -1,81 +1,153 @@
 "use client";
 
 import { ReactorProvider } from "@reactor-team/js-sdk";
-import { useCallback, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { NanoBananaExample } from "@/components/nano-banana-example";
 import { OrbisControls } from "@/components/orbis-controls";
 import { OrbisPlayer } from "@/components/orbis-player";
 import { useOrbisSession } from "@/hooks/use-orbis-session";
-import { ORBIS_MODEL_NAME, ORBIS_TRACKS, requestReactorJwt } from "@/lib/orbis";
+import {
+  ORBIS_MODEL_NAME,
+    ORBIS_TRACKS,
+      requestReactorJwt,
+      } from "@/lib/orbis";
 
-export function OrbisDemo() {
-  const jwtPromise = useRef<Promise<string> | null>(null);
-  const currentJwt = useRef<string | null>(null);
-  const getJwt = useCallback(async () => {
-    const pending = (jwtPromise.current ??= requestReactorJwt());
-    try {
-      const jwt = await pending;
-      currentJwt.current = jwt;
-      return jwt;
-    } catch (error) {
-      // Do not permanently cache a failed token request.
-      if (jwtPromise.current === pending) jwtPromise.current = null;
-      throw error;
-    }
-  }, []);
-  const getCurrentJwt = useCallback(() => currentJwt.current, []);
-  const clearJwt = useCallback(() => {
-    jwtPromise.current = null;
-    currentJwt.current = null;
-  }, []);
+      export function OrbisDemo() {
+        const jwtPromise = useRef<Promise<string> | null>(null);
+          const currentJwt = useRef<string | null>(null);
 
-  return (
-    <section className="demo-shell">
-      <ReactorProvider
-        apiUrl="https://api.reactor.inc"
-        modelName={ORBIS_MODEL_NAME}
-        modelTracks={[...ORBIS_TRACKS]}
-        connectOptions={{ autoConnect: false }}
-        jwtToken={getJwt}
-      >
-        <OrbisSession
-          clearJwt={clearJwt}
-          getCurrentJwt={getCurrentJwt}
-        />
-      </ReactorProvider>
-    </section>
-  );
-}
+            const getJwt = useCallback(async () => {
+                const pending = (jwtPromise.current ??= requestReactorJwt());
 
-function OrbisSession({
-  clearJwt,
-  getCurrentJwt,
-}: {
-  clearJwt: () => void;
-  getCurrentJwt: () => string | null;
-}) {
-  const session = useOrbisSession(clearJwt, getCurrentJwt);
+                    try {
+                          const jwt = await pending;
+                                currentJwt.current = jwt;
+                                      return jwt;
+                                          } catch (error) {
+                                                if (jwtPromise.current === pending) {
+                                                        jwtPromise.current = null;
+                                                              }
+                                                                    throw error;
+                                                                        }
+                                                                          }, []);
 
-  return (
-    <>
-      <div className="session-grid">
-        <OrbisPlayer
-          connected={session.connected}
-          muted={session.muted}
-          runStarted={session.runStarted}
-          status={session.status}
-        />
-        <OrbisControls session={session} />
-      </div>
+                                                                            const getCurrentJwt = useCallback(() => currentJwt.current, []);
 
-      <NanoBananaExample
-        disabled={
-          !session.connected || session.runStarted || session.controlsBusy
-        }
-        onActivityChange={session.setNanoBusy}
-        onReady={session.startFromNanoOutput}
-      />
-    </>
-  );
-}
+                                                                              const clearJwt = useCallback(() => {
+                                                                                  jwtPromise.current = null;
+                                                                                      currentJwt.current = null;
+                                                                                        }, []);
+
+                                                                                          return (
+                                                                                              <section className="demo-shell">
+                                                                                                    <ReactorProvider
+                                                                                                            apiUrl="https://api.reactor.inc"
+                                                                                                                    modelName={ORBIS_MODEL_NAME}
+                                                                                                                            modelTracks={[...ORBIS_TRACKS]}
+                                                                                                                                    connectOptions={{ autoConnect: false }}
+                                                                                                                                            jwtToken={getJwt}
+                                                                                                                                                  >
+                                                                                                                                                          <OrbisSession
+                                                                                                                                                                    clearJwt={clearJwt}
+                                                                                                                                                                              getCurrentJwt={getCurrentJwt}
+                                                                                                                                                                                      />
+                                                                                                                                                                                            </ReactorProvider>
+                                                                                                                                                                                                </section>
+                                                                                                                                                                                                  );
+                                                                                                                                                                                                  }
+
+                                                                                                                                                                                                  function OrbisSession({
+                                                                                                                                                                                                    clearJwt,
+                                                                                                                                                                                                      getCurrentJwt,
+                                                                                                                                                                                                      }: {
+                                                                                                                                                                                                        clearJwt: () => void;
+                                                                                                                                                                                                          getCurrentJwt: () => string | null;
+                                                                                                                                                                                                          }) {
+                                                                                                                                                                                                            const session = useOrbisSession(clearJwt, getCurrentJwt);
+                                                                                                                                                                                                              const [pendingPrompt, setPendingPrompt] = useState<string | null>(null);
+
+                                                                                                                                                                                                                useEffect(() => {
+                                                                                                                                                                                                                    if (!pendingPrompt) return;
+
+                                                                                                                                                                                                                        session.setPrompt(pendingPrompt);
+                                                                                                                                                                                                                            void session.steer();
+
+                                                                                                                                                                                                                                setPendingPrompt(null);
+                                                                                                                                                                                                                                  }, [pendingPrompt, session]);
+
+                                                                                                                                                                                                                                    const chooseAction = (prompt: string) => {
+                                                                                                                                                                                                                                        setPendingPrompt(prompt);
+                                                                                                                                                                                                                                          };
+
+                                                                                                                                                                                                                                            return (
+                                                                                                                                                                                                                                                <>
+                                                                                                                                                                                                                                                      <div className="session-grid">
+                                                                                                                                                                                                                                                              <OrbisPlayer
+                                                                                                                                                                                                                                                                        connected={session.connected}
+                                                                                                                                                                                                                                                                                  muted={session.muted}
+                                                                                                                                                                                                                                                                                            runStarted={session.runStarted}
+                                                                                                                                                                                                                                                                                                      status={session.status}
+                                                                                                                                                                                                                                                                                                              />
+
+                                                                                                                                                                                                                                                                                                                      <OrbisControls session={session} />
+                                                                                                                                                                                                                                                                                                                            </div>
+
+                                                                                                                                                                                                                                                                                                                                  <section>
+                                                                                                                                                                                                                                                                                                                                          <h2>WHAT DO YOU DO?</h2>
+
+                                                                                                                                                                                                                                                                                                                                                  <button
+                                                                                                                                                                                                                                                                                                                                                            type="button"
+                                                                                                                                                                                                                                                                                                                                                                      onClick={() =>
+                                                                                                                                                                                                                                                                                                                                                                                  chooseAction(
+                                                                                                                                                                                                                                                                                                                                                                                                "The player searches the nearby computer terminal. Keep the same location and character. The terminal flickers on."
+                                                                                                                                                                                                                                                                                                                                                                                                            )
+                                                                                                                                                                                                                                                                                                                                                                                                                      }
+                                                                                                                                                                                                                                                                                                                                                                                                                              >
+                                                                                                                                                                                                                                                                                                                                                                                                                                        SEARCH THE COMPUTER
+                                                                                                                                                                                                                                                                                                                                                                                                                                                </button>
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                        <button
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                  type="button"
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                            onClick={() =>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        chooseAction(
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      "The player approaches the locked metal door and tries to open it. Keep the same location and character."
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  )
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            }
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    >
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              TRY THE DOOR
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      </button>
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              <button
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        type="button"
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  onClick={() =>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              chooseAction(
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            "The player enters the ventilation shaft. Keep the same location and character."
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        )
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  }
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          >
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    ENTER THE VENT
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            </button>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  </section>
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        <NanoBananaExample
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                disabled={
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          !session.connected ||
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    session.runStarted ||
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              session.controlsBusy
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      }
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              onActivityChange={session.setNanoBusy}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      onReady={session.startFromNanoOutput}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            />
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                </>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  );
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  }
+
+
+
+
+
+
+
+
+
